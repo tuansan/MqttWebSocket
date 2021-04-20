@@ -65,14 +65,14 @@ namespace MqttWebSocket
 
             app.UseAuthorization();
 
-            app.UseMqttEndpoint(mqttSettings, mqttService);
-
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapControllerRoute(
                     name: "default",
                     pattern: "{controller=Home}/{action=Index}/{id?}");
             });
+
+            app.UseMqttEndpoint(mqttSettings, mqttService);
         }
 
     }

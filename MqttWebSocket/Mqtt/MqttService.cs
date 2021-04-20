@@ -17,18 +17,18 @@ namespace MqttWebSocket.Mqtt
     public class MqttService : IMqttService
     {
         private readonly MqttSettingsModel _mqttSettings;
-        private IMqttServer _mqttServer { get; }
-        private MqttWebSocketServerAdapter _adapter { get; }
-
+        private IMqttServer MqttServer { get; }
+        private MqttWebSocketServerAdapter Adapter { get; }
+        private int Count;
         public MqttService(MqttSettingsModel mqttSettings)
         {
             _mqttSettings = mqttSettings;
 
             var mqttFactory = new MqttFactory();
 
-            _adapter = new MqttWebSocketServerAdapter(mqttFactory.DefaultLogger);
+            Adapter = new MqttWebSocketServerAdapter(mqttFactory.DefaultLogger);
 
-            var adapters = new List<IMqttServerAdapter> { _adapter };
+            var adapters = new List<IMqttServerAdapter> { Adapter };
 
             if (mqttSettings.TcpEndPoint?.Enabled == true)
                 adapters.Add(new MqttTcpServerAdapter(mqttFactory.DefaultLogger)
@@ -36,36 +36,51 @@ namespace MqttWebSocket.Mqtt
                     TreatSocketOpeningErrorAsWarning = true // Opening other ports than for HTTP is not allows in Azure App Services.
                 });
 
-            _mqttServer = mqttFactory.CreateMqttServer(adapters);
+            MqttServer = mqttFactory.CreateMqttServer(adapters);
         }
 
         public Task StartAsync()
         {
             var optionsBuilder = new MqttServerOptionsBuilder()
-                .WithConnectionValidator(c =>
-                {
-                    Console.WriteLine($"{c.ClientId} connection validator for c.Endpoint: {c.Endpoint}");
-                    c.ReasonCode = MqttConnectReasonCode.Success;
-                })
-                .WithApplicationMessageInterceptor(context =>
-                {
-                    var oldData = context.ApplicationMessage.Payload;
-                    string text = Encoding.UTF8.GetString(oldData);
-
-                    Console.WriteLine($"{context.ApplicationMessage.Topic}: {text}");
-                    //context.ApplicationMessage.Payload = mergedData;
-                    //context.ApplicationMessage.Topic = "text10";
-                })
-                .WithSubscriptionInterceptor(s =>
-                {
-                    if (s.TopicFilter.Topic.Equals("#")) s.CloseConnection = true;
-                })
+                .WithConnectionValidator(ConnectionValidator)
+                .WithApplicationMessageInterceptor(ApplicationMessageInterceptor)
+                .WithSubscriptionInterceptor(SubscriptionInterceptor)
                 .WithConnectionBacklog(_mqttSettings.ConnectionBacklog)
                 .WithDefaultEndpointPort(_mqttSettings.TcpEndPoint.Port).Build();
 
-            _mqttServer.StartAsync(optionsBuilder);
+            MqttServer.ClientDisconnectedHandler = new MqttServerClientDisconnectedHandlerDelegate(ClientDisconnectedHandler);
+
+            MqttServer.StartAsync(optionsBuilder);
 
             return Task.CompletedTask;
+        }
+
+        private void ConnectionValidator(MqttConnectionValidatorContext c)
+        {
+            Console.WriteLine($"{c.ClientId} connection validator for c.Endpoint: {c.Endpoint}");
+            Console.WriteLine($"{++Count} connection");
+
+            c.ReasonCode = MqttConnectReasonCode.Success;
+        }
+
+        private void ClientDisconnectedHandler(MqttServerClientDisconnectedEventArgs d)
+        {
+            Console.WriteLine($"{--Count} connection");
+        }
+
+        private void ApplicationMessageInterceptor(MqttApplicationMessageInterceptorContext context)
+        {
+            var oldData = context.ApplicationMessage.Payload;
+            string text = Encoding.UTF8.GetString(oldData);
+
+            Console.WriteLine($"{context.ApplicationMessage.Topic}: {text}");
+            //context.ApplicationMessage.Topic = "text10";
+        }
+
+        private void SubscriptionInterceptor(MqttSubscriptionInterceptorContext s)
+        {
+            if (!s.TopicFilter.Topic.Equals("#") && s.TopicFilter.Topic.Equals(s.ClientId)) return;
+            s.AcceptSubscription = false;
         }
 
         public async Task RunWebSocketConnectionAsync(HttpContext context)
@@ -78,14 +93,14 @@ namespace MqttWebSocket.Mqtt
 
             using var webSocket = await context.WebSockets.AcceptWebSocketAsync(subProtocol).ConfigureAwait(false);
 
-            await _adapter.RunWebSocketConnectionAsync(webSocket, context).ConfigureAwait(false);
+            await Adapter.RunWebSocketConnectionAsync(webSocket, context).ConfigureAwait(false);
         }
 
         public Task<MqttClientPublishResult> PublishAsync(MqttApplicationMessage applicationMessage)
         {
             if (applicationMessage == null) throw new ArgumentNullException(nameof(applicationMessage));
 
-            return _mqttServer.PublishAsync(applicationMessage);
+            return MqttServer.PublishAsync(applicationMessage);
         }
     }
 }
