@@ -12,7 +12,7 @@ namespace MqttWebSocket.Mqtt
 {
     public class CustomMqttFactory
     {
-        public readonly MqttFactory _mqttFactory;
+        private readonly MqttFactory _mqttFactory;
 
         public CustomMqttFactory(MqttSettingsModel settings, ILogger<MqttServer> logger)
         {
