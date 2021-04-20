@@ -14,9 +14,9 @@ using System.Text;
 
 namespace MqttWebSocket.Configuration
 {
-    public static class ConfigureWebSocketEndpoint
+    public static class ConfigureMqtt
     {
-        public static void UseMqttSettings(this IServiceCollection services, IConfiguration configuration)
+        public static void UseMqtt(this IServiceCollection services, IConfiguration configuration)
         {
             if (services == null)
             {
@@ -29,7 +29,7 @@ namespace MqttWebSocket.Configuration
             services.AddSingleton<IMqttService, MqttService>();
         }
 
-        public static void UseWebSocketEndpointApplicationBuilder(
+        public static void UseMqttEndpoint(
             this IApplicationBuilder application,
             MqttSettingsModel mqttSettings,
             IMqttService mqttService)

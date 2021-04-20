@@ -37,7 +37,7 @@ namespace MqttWebSocket
         {
             //services.AddCors();
             services.AddControllersWithViews();
-            services.UseMqttSettings(Configuration);
+            services.UseMqtt(Configuration);
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -65,7 +65,7 @@ namespace MqttWebSocket
 
             app.UseAuthorization();
 
-            app.UseWebSocketEndpointApplicationBuilder(mqttSettings, mqttService);
+            app.UseMqttEndpoint(mqttSettings, mqttService);
 
             app.UseEndpoints(endpoints =>
             {
