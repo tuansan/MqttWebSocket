@@ -35,10 +35,9 @@ namespace MqttWebSocket
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddCors();
+            //services.AddCors();
             services.AddControllersWithViews();
-            ReadMqttSettings(services);
-            services.AddSingleton<CustomMqttFactory>();
+            services.UseMqttSettings(Configuration);
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -59,12 +58,37 @@ namespace MqttWebSocket
 
             app.UseRouting();
 
-            app.UseCors(x => x
-                .AllowAnyOrigin()
-                .AllowAnyMethod()
-                .AllowAnyHeader());
+            //app.UseCors(x => x
+            //    .AllowAnyOrigin()
+            //    .AllowAnyMethod()
+            //    .AllowAnyHeader());
 
             app.UseAuthorization();
+
+
+            var optionsBuilder = new MqttServerOptionsBuilder()
+                .WithConnectionValidator(c =>
+                {
+                    Console.WriteLine($"{c.ClientId} connection validator for c.Endpoint: {c.Endpoint}");
+                    c.ReasonCode = MqttConnectReasonCode.Success;
+                })
+                .WithApplicationMessageInterceptor(context =>
+                {
+                    var oldData = context.ApplicationMessage.Payload;
+                    string text = Encoding.UTF8.GetString(oldData);
+
+                    Console.WriteLine(context.ApplicationMessage.Topic + ": " + text);
+                    //context.ApplicationMessage.Payload = mergedData;
+                    //context.ApplicationMessage.Topic = "text10";
+                })
+                .WithSubscriptionInterceptor(s =>
+                {
+                    if (s.TopicFilter.Topic.Equals("#")) s.TopicFilter.Topic = null;
+                })
+                .WithConnectionBacklog(mqttSettings.ConnectionBacklog)
+                .WithDefaultEndpointPort(mqttSettings.TcpEndPoint.Port);
+
+            mqttFactory.MqttServer.StartAsync(optionsBuilder.Build()).Wait();
 
             app.UseWebSocketEndpointApplicationBuilder(mqttSettings, mqttFactory);
 
@@ -74,14 +98,6 @@ namespace MqttWebSocket
                     name: "default",
                     pattern: "{controller=Home}/{action=Index}/{id?}");
             });
-        }
-
-
-        private void ReadMqttSettings(IServiceCollection services)
-        {
-            var mqttSettings = new MqttSettingsModel();
-            Configuration.Bind("MQTT", mqttSettings);
-            services.AddSingleton(mqttSettings);
         }
 
     }
