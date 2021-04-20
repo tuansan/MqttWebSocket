@@ -26,14 +26,19 @@ namespace MqttWebSocket.Configuration
             var mqttSettings = new MqttSettingsModel();
             configuration.Bind("MQTT", mqttSettings);
             services.AddSingleton(mqttSettings);
-            services.AddSingleton<CustomMqttFactory>();
+            services.AddSingleton<IMqttService, MqttService>();
         }
 
         public static void UseWebSocketEndpointApplicationBuilder(
             this IApplicationBuilder application,
             MqttSettingsModel mqttSettings,
-            CustomMqttFactory mqttFactory)
+            IMqttService mqttService)
         {
+            mqttService.StartAsync();
+
+            if (mqttSettings.WebSocketEndPoint?.Enabled != true || string.IsNullOrEmpty(mqttSettings.WebSocketEndPoint.Path))
+                return;
+
             var webSocketOptions = new WebSocketOptions
             {
                 KeepAliveInterval = TimeSpan.FromSeconds(mqttSettings.WebSocketEndPoint.KeepAliveInterval)
@@ -49,22 +54,13 @@ namespace MqttWebSocket.Configuration
 
             application.UseWebSockets(webSocketOptions);
 
-
             application.Use(async (context, next) =>
             {
-
-                if (context.Request.Path == mqttSettings.WebSocketEndPoint.Path && mqttSettings.WebSocketEndPoint?.Enabled == true && !string.IsNullOrEmpty(mqttSettings.WebSocketEndPoint.Path))
+                if (context.Request.Path == mqttSettings.WebSocketEndPoint.Path)
                 {
                     if (context.WebSockets.IsWebSocketRequest)
                     {
-                        string subProtocol = null;
-                        if (context.Request.Headers.TryGetValue("Sec-WebSocket-Protocol", out var requestedSubProtocolValues))
-                        {
-                            subProtocol = MqttSubProtocolSelector.SelectSubProtocol(requestedSubProtocolValues);
-                        }
-
-                        using var webSocket = await context.WebSockets.AcceptWebSocketAsync(subProtocol).ConfigureAwait(false);
-                        await mqttFactory.Adapter.RunWebSocketConnectionAsync(webSocket, context).ConfigureAwait(false);
+                        await mqttService.RunWebSocketConnectionAsync(context);
                     }
                     else
                     {

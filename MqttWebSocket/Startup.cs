@@ -41,7 +41,7 @@ namespace MqttWebSocket
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IWebHostEnvironment env, MqttSettingsModel mqttSettings, CustomMqttFactory mqttFactory)
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env, MqttSettingsModel mqttSettings, IMqttService mqttService)
         {
             if (env.IsDevelopment())
             {
@@ -65,32 +65,7 @@ namespace MqttWebSocket
 
             app.UseAuthorization();
 
-
-            var optionsBuilder = new MqttServerOptionsBuilder()
-                .WithConnectionValidator(c =>
-                {
-                    Console.WriteLine($"{c.ClientId} connection validator for c.Endpoint: {c.Endpoint}");
-                    c.ReasonCode = MqttConnectReasonCode.Success;
-                })
-                .WithApplicationMessageInterceptor(context =>
-                {
-                    var oldData = context.ApplicationMessage.Payload;
-                    string text = Encoding.UTF8.GetString(oldData);
-
-                    Console.WriteLine(context.ApplicationMessage.Topic + ": " + text);
-                    //context.ApplicationMessage.Payload = mergedData;
-                    //context.ApplicationMessage.Topic = "text10";
-                })
-                .WithSubscriptionInterceptor(s =>
-                {
-                    if (s.TopicFilter.Topic.Equals("#")) s.TopicFilter.Topic = null;
-                })
-                .WithConnectionBacklog(mqttSettings.ConnectionBacklog)
-                .WithDefaultEndpointPort(mqttSettings.TcpEndPoint.Port);
-
-            mqttFactory.MqttServer.StartAsync(optionsBuilder.Build()).Wait();
-
-            app.UseWebSocketEndpointApplicationBuilder(mqttSettings, mqttFactory);
+            app.UseWebSocketEndpointApplicationBuilder(mqttSettings, mqttService);
 
             app.UseEndpoints(endpoints =>
             {
