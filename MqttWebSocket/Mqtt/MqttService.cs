@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
@@ -11,6 +12,7 @@ using MQTTnet.Implementations;
 using MQTTnet.Protocol;
 using MQTTnet.Server;
 using MqttWebSocket.Configuration;
+using MqttWebSocket.Models;
 
 namespace MqttWebSocket.Mqtt
 {
@@ -20,6 +22,7 @@ namespace MqttWebSocket.Mqtt
         private IMqttServer MqttServer { get; }
         private MqttWebSocketServerAdapter Adapter { get; }
         private int Count;
+        private IList<MemberModel> List { get; set; }
         public MqttService(MqttSettingsModel mqttSettings)
         {
             _mqttSettings = mqttSettings;
@@ -37,6 +40,8 @@ namespace MqttWebSocket.Mqtt
                 });
 
             MqttServer = mqttFactory.CreateMqttServer(adapters);
+
+            List = new List<MemberModel>();
         }
 
         public Task StartAsync()
@@ -61,10 +66,20 @@ namespace MqttWebSocket.Mqtt
             Console.WriteLine($"{++Count} connection");
 
             c.ReasonCode = MqttConnectReasonCode.Success;
+
+            string g = Guid.NewGuid().ToString();
+
+            List.Add(new MemberModel
+            {
+                Id = c.ClientId,
+                Topic = g,
+                Guid = g
+            });
         }
 
         private void ClientDisconnectedHandler(MqttServerClientDisconnectedEventArgs d)
         {
+            List.Remove(List.FirstOrDefault(s => s.Id == d.ClientId));
             Console.WriteLine($"{--Count} connection");
         }
 
@@ -79,8 +94,8 @@ namespace MqttWebSocket.Mqtt
 
         private void SubscriptionInterceptor(MqttSubscriptionInterceptorContext s)
         {
-            if (!s.TopicFilter.Topic.Equals("#") && s.TopicFilter.Topic.Equals(s.ClientId)) return;
-            s.AcceptSubscription = false;
+            if (s.TopicFilter.Topic.Equals("#"))
+                s.AcceptSubscription = false;
         }
 
         public async Task RunWebSocketConnectionAsync(HttpContext context)

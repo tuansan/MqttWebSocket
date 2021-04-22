@@ -13,9 +13,8 @@
 {
     <script src="~/js/mqtt.js"></script>
     <script type="text/javascript">
-        const client = mqtt.connect('ws://localhost:5000/mqtt',
+        const client = mqtt.connect('wss://localhost:5001/mqtt',
             {
-                clientId: "tuansan123",
                 clean: false,
                 username: "123",
                 password: "321"
