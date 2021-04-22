@@ -1,8 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using MQTTnet;
 using MQTTnet.Adapter;
@@ -13,6 +8,11 @@ using MQTTnet.Protocol;
 using MQTTnet.Server;
 using MqttWebSocket.Configuration;
 using MqttWebSocket.Models;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace MqttWebSocket.Mqtt
 {
@@ -21,8 +21,9 @@ namespace MqttWebSocket.Mqtt
         private readonly MqttSettingsModel _mqttSettings;
         private IMqttServer MqttServer { get; }
         private MqttWebSocketServerAdapter Adapter { get; }
+        private IList<MemberModel> List { get; }
         private int Count;
-        private IList<MemberModel> List { get; set; }
+
         public MqttService(MqttSettingsModel mqttSettings)
         {
             _mqttSettings = mqttSettings;
@@ -62,25 +63,28 @@ namespace MqttWebSocket.Mqtt
 
         private void ConnectionValidator(MqttConnectionValidatorContext c)
         {
-            Console.WriteLine($"{c.ClientId} connection validator for c.Endpoint: {c.Endpoint}");
-            Console.WriteLine($"{++Count} connection");
-
-            c.ReasonCode = MqttConnectReasonCode.Success;
-
-            string g = Guid.NewGuid().ToString();
-
-            List.Add(new MemberModel
+            if (c.Username != "admin" || c.Password != "123456")
+                c.ReasonCode = MqttConnectReasonCode.NotAuthorized;
+            else
             {
-                Id = c.ClientId,
-                Topic = g,
-                Guid = g
-            });
+                Console.WriteLine($"{c.ClientId} connection validator for c.Endpoint: {c.Endpoint}");
+                Console.WriteLine($"{++Count} online");
+
+                Guid g = Guid.NewGuid();
+
+                List.Add(new MemberModel
+                {
+                    Id = c.ClientId,
+                    Topic = g.ToString(),
+                    Guid = g
+                });
+            }
         }
 
         private void ClientDisconnectedHandler(MqttServerClientDisconnectedEventArgs d)
         {
             List.Remove(List.FirstOrDefault(s => s.Id == d.ClientId));
-            Console.WriteLine($"{--Count} connection");
+            Console.WriteLine($"{--Count} online");
         }
 
         private void ApplicationMessageInterceptor(MqttApplicationMessageInterceptorContext context)
@@ -96,6 +100,10 @@ namespace MqttWebSocket.Mqtt
         {
             if (s.TopicFilter.Topic.Equals("#"))
                 s.AcceptSubscription = false;
+
+            if (Guid.TryParse(s.TopicFilter.Topic, out Guid g))
+                if (g != List.FirstOrDefault(q => q.Id == s.ClientId)?.Guid)
+                    s.AcceptSubscription = false;
         }
 
         public async Task RunWebSocketConnectionAsync(HttpContext context)

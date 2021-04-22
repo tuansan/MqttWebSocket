@@ -10,6 +10,6 @@ namespace MqttWebSocket.Models
     {
         public string Id { get; set; }
         public string Topic { get; set; }
-        public string Guid { get; set; }
+        public Guid Guid { get; set; }
     }
 }
