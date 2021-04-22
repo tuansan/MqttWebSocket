@@ -13,28 +13,57 @@
 {
     <script src="~/js/mqtt.js"></script>
     <script type="text/javascript">
-        const client = mqtt.connect('wss://localhost:5001/mqtt?id=123321',
-            {
-                username: "admin",
-                password: "123456"
-            })
+        const WS = (() => {
+            var client;
 
-        client.on('connect',
-            function() {
-                client.subscribe("tuansan123",{ qos: 1 },
-                    function(err, data) {
-                        console.log("Subscribed");
+            const publish = (topic, payload, qos = 1) => {
+                if (topic && payload)
+                    client.publish(topic, payload, { qos: qos, retain: true },);
+            }
+
+            const subscribe = (topic, qos = 2) => {
+                if (topic)
+                    client.subscribe(
+                        topic,
+                        { qos: qos },
+                        (err, data) => {
+                            if (!err);
+                            console.log("Subscribed");
+                        })
+            }
+
+            const init = () => {
+                client = mqtt.connect('wss://localhost:5001/mqtt',
+                    {
+                        username: "admin",
+                        password: "123456"
                     })
-            })
 
-        client.on('message',
-            function(topic, message) {
-                console.log(topic);
-                console.log(message.toString())
-            })
+                client.on('connect', () => {
+                    console.log("connected");
+                })
 
+                client.on('message', (topic, message) => {
+                    console.log(topic);
+                    console.log(message.toString())
+                })
+
+            }
+
+
+            return {
+                init: init,
+                subscribe: subscribe,
+                publish: publish
+            }
+        })();
+
+        $(document).ready(function () {
+            WS.init();
+            WS.subscribe("test")
+        })
         function buttonClick() {
-            client.publish(document.getElementById("topic").value, document.getElementById("payload").value, { qos: 1 });
+            WS.publish(document.getElementById("topic").value, document.getElementById("payload").value, 1);
         }
     </script>
 }
