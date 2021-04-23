@@ -9,6 +9,7 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="5.0.1" />
     <PackageReference Include="MQTTnet" Version="3.0.15" />
     <PackageReference Include="MQTTnet.AspNetCore" Version="3.0.15" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
   </ItemGroup>
 
 </Project>

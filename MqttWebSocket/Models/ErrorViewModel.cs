@@ -1,5 +1,3 @@
-using System;
-
 namespace MqttWebSocket.Models
 {
     public class ErrorViewModel

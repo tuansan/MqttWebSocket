@@ -12,6 +12,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace MqttWebSocket.Mqtt
@@ -60,6 +61,8 @@ namespace MqttWebSocket.Mqtt
 
             MqttServer.StartAsync(optionsBuilder);
 
+            _ = AutoPublishAsync();
+
             return Task.CompletedTask;
         }
 
@@ -82,6 +85,38 @@ namespace MqttWebSocket.Mqtt
                 });
             }
         }
+
+        private async Task AutoPublishAsync()
+        {
+            var rand = new Random();
+
+            while (true)
+            {
+                Console.WriteLine("Auto Publish Time " + DateTime.Now.TimeOfDay);
+                IList<object> data = new List<object>();
+                for (int i = 1; i <= 8; i++)
+                {
+                    int num = rand.Next(1, 1000);
+                    if (num % 2 == 0)
+                        await PublishAsync(new MqttApplicationMessage()
+                        {
+                            Topic = $"test{i}",
+                            Retain = true,
+                            Payload = new
+                            {
+                                Ten = $"test{i}",
+                                ThoiGianDocGiuLieu = DateTime.Now,
+                                GiaTri = num,
+                                Quality = "Good"
+                            }.GetBytePayload(),
+                            QualityOfServiceLevel = MqttQualityOfServiceLevel.AtMostOnce
+                        });
+                }
+
+                await Task.Delay(TimeSpan.FromSeconds(1), CancellationToken.None);
+            }
+        }
+
 
         private void ClientDisconnectedHandler(MqttServerClientDisconnectedEventArgs d)
         {

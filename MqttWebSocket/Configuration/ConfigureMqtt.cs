@@ -1,13 +1,8 @@
 ﻿using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using MQTTnet.Adapter;
-using MQTTnet.AspNetCore;
-using MQTTnet.Protocol;
-using MQTTnet.Server;
 using MqttWebSocket.Mqtt;
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Text;

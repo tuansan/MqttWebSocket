@@ -26,7 +26,7 @@
                     client.subscribe(
                         topic,
                         { qos: qos },
-                        (err, data) => {
+                        (err) => {
                             if (!err);
                             console.log("Subscribed");
                         })
