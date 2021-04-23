@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace MqttWebSocket.Configuration
+namespace MqttWebSocket.Configuration.Models
 {
     public class WebSocketEndPointModel
     {

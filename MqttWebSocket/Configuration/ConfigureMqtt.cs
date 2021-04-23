@@ -23,7 +23,7 @@ namespace MqttWebSocket.Configuration
                 throw new ArgumentNullException(nameof(services));
             }
 
-            var mqttSettings = new MqttSettingsModel();
+            var mqttSettings = new MqttSettings();
             configuration.Bind("MQTT", mqttSettings);
             services.AddSingleton(mqttSettings);
             services.AddSingleton<IMqttService, MqttService>();
@@ -31,7 +31,7 @@ namespace MqttWebSocket.Configuration
 
         public static void UseMqttEndpoint(
             this IApplicationBuilder application,
-            MqttSettingsModel mqttSettings,
+            MqttSettings mqttSettings,
             IMqttService mqttService)
         {
             mqttService.StartAsync();

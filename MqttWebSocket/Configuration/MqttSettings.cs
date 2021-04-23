@@ -1,9 +1,11 @@
-﻿namespace MqttWebSocket.Configuration
+﻿using MqttWebSocket.Configuration.Models;
+
+namespace MqttWebSocket.Configuration
 {
     /// <summary>
     /// MQTT settings Model
     /// </summary>
-    public class MqttSettingsModel
+    public class MqttSettings
     {
         /// <summary>
         /// Set default connection timeout in seconds

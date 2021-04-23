@@ -18,13 +18,13 @@ namespace MqttWebSocket.Mqtt
 {
     public class MqttService : IMqttService
     {
-        private readonly MqttSettingsModel _mqttSettings;
+        private readonly MqttSettings _mqttSettings;
         private IMqttServer MqttServer { get; }
         private MqttWebSocketServerAdapter Adapter { get; }
         private IList<MemberModel> List { get; }
         private int Count;
 
-        public MqttService(MqttSettingsModel mqttSettings)
+        public MqttService(MqttSettings mqttSettings)
         {
             _mqttSettings = mqttSettings;
 

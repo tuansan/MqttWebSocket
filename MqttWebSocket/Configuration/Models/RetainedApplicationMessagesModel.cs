@@ -1,4 +1,4 @@
-namespace MqttWebSocket.Configuration
+namespace MqttWebSocket.Configuration.Models
 {
     public class RetainedApplicationMessagesModel
     {

@@ -1,6 +1,6 @@
 using System.IO;
 
-namespace MqttWebSocket.Configuration
+namespace MqttWebSocket.Configuration.Models
 {
     public class CertificateSettingsModel
     {

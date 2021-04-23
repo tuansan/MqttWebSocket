@@ -1,6 +1,6 @@
 using System.Net;
 
-namespace MqttWebSocket.Configuration
+namespace MqttWebSocket.Configuration.Models
 {
     /// <summary>
     /// Listen Entry Settings Model
