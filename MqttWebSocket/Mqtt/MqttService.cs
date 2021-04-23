@@ -52,7 +52,9 @@ namespace MqttWebSocket.Mqtt
                 .WithApplicationMessageInterceptor(ApplicationMessageInterceptor)
                 .WithSubscriptionInterceptor(SubscriptionInterceptor)
                 .WithConnectionBacklog(_mqttSettings.ConnectionBacklog)
-                .WithDefaultEndpointPort(_mqttSettings.TcpEndPoint.Port).Build();
+                .WithDefaultEndpointPort(_mqttSettings.TcpEndPoint.Port)
+                .WithMaxPendingMessagesPerClient(_mqttSettings.MaxPendingMessagesPerClient)
+                .Build();
 
             MqttServer.ClientDisconnectedHandler = new MqttServerClientDisconnectedHandlerDelegate(ClientDisconnectedHandler);
 
