@@ -60,7 +60,7 @@
 
         $(document).ready(function () {
             WS.init();
-            WS.subscribe("test")
+            WS.subscribe("test1")
         })
         function buttonClick() {
             WS.publish(document.getElementById("topic").value, document.getElementById("payload").value, 1);

@@ -10,6 +10,7 @@ using MqttWebSocket.Configuration;
 using MqttWebSocket.Models;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -24,6 +25,7 @@ namespace MqttWebSocket.Mqtt
         private MqttWebSocketServerAdapter Adapter { get; }
         private IList<MemberModel> List { get; }
         private int Count;
+        private float[] GiaTri;
 
         public MqttService(MqttSettings mqttSettings)
         {
@@ -44,6 +46,7 @@ namespace MqttWebSocket.Mqtt
             MqttServer = mqttFactory.CreateMqttServer(adapters);
 
             List = new List<MemberModel>();
+            GiaTri = new float[8];
         }
 
         public Task StartAsync()
@@ -94,28 +97,49 @@ namespace MqttWebSocket.Mqtt
             {
                 Console.WriteLine("Auto Publish Time " + DateTime.Now.TimeOfDay);
                 IList<object> data = new List<object>();
-                for (int i = 1; i <= 8; i++)
+                for (int i = 0; i < 8; i++)
                 {
-                    int num = rand.Next(1, 1000);
+                    float num = rand.Next(0, 900);
                     if (num % 2 == 0)
+                    {
+                        num -= GiaTri[i] < 500 ? 300 : GiaTri[i] > 700 ? 600 : 450;
+
+                        GiaTri[i] += num / rand.Next(20, 40);
+
+                        if (GiaTri[i] < 0) GiaTri[i] = 0;
+                        if (GiaTri[i] > 1000) GiaTri[i] = 1000;
+
                         await PublishAsync(new MqttApplicationMessage()
                         {
-                            Topic = $"test{i}",
+                            Topic = $"test{i + 1}",
                             Retain = true,
                             Payload = new
                             {
-                                Ten = $"test{i}",
+                                Ten = $"test{i + 1}",
                                 ThoiGianDocGiuLieu = DateTime.Now,
-                                GiaTri = num,
-                                Quality = "Good"
+                                GiaTri = GiaTri[i],
+                                Quality = GetQuality(rand.Next(1, 11))
                             }.GetBytePayload(),
                             QualityOfServiceLevel = MqttQualityOfServiceLevel.AtMostOnce
                         });
+                    }
                 }
 
                 await Task.Delay(TimeSpan.FromSeconds(1), CancellationToken.None);
             }
         }
+
+        private static string GetQuality(int num) =>
+            num switch
+            {
+                1 => "Low",
+                2 => "Low",
+                3 => "Medium",
+                4 => "Medium",
+                5 => "Medium",
+                6 => "Medium",
+                _ => "Good"
+            };
 
 
         private void ClientDisconnectedHandler(MqttServerClientDisconnectedEventArgs d)
