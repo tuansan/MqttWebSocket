@@ -151,15 +151,12 @@ namespace MqttWebSocket.Mqtt
         {
             if (context.ApplicationMessage.Topic == "test")
             {
-                var oldData = context.ApplicationMessage.Payload;
-                var dyn = JsonConvert.DeserializeObject<dynamic>(Encoding.UTF8.GetString(oldData));
-                if (dyn != null)
-                {
-                    PublishAsync(ChangTopicMessage(context.ApplicationMessage, dyn["Ten"].Value));
-                }
-
+                var dyn = JsonConvert.DeserializeObject<dynamic>(Encoding.UTF8.GetString(context.ApplicationMessage.Payload));
+                // ReSharper disable once PossibleNullReferenceException
+                string topic = dyn["Ten"]?.Value;
+                if (!string.IsNullOrEmpty(topic))
+                    PublishAsync(ChangTopicMessage(context.ApplicationMessage, topic));
             }
-            //context.ApplicationMessage.Topic = "text10";
         }
 
         private MqttApplicationMessage ChangTopicMessage(MqttApplicationMessage message, string newTopic)
