@@ -10,11 +10,12 @@ using MqttWebSocket.Configuration;
 using MqttWebSocket.Models;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace MqttWebSocket.Mqtt
 {
@@ -95,28 +96,26 @@ namespace MqttWebSocket.Mqtt
 
             while (true)
             {
-                Console.WriteLine("Auto Publish Time " + DateTime.Now.TimeOfDay);
-                IList<object> data = new List<object>();
                 for (int i = 0; i < 8; i++)
                 {
                     float num = rand.Next(0, 900);
-                    if (num % 2 == 0)
+                    if (true)//num % 2 == 0 || num is > 700 or < 200)
                     {
                         num -= GiaTri[i] < 500 ? 300 : GiaTri[i] > 700 ? 600 : 450;
 
-                        GiaTri[i] += num / rand.Next(20, 40);
+                        GiaTri[i] += num / rand.Next(10, 30);
 
                         if (GiaTri[i] < 0) GiaTri[i] = 0;
                         if (GiaTri[i] > 1000) GiaTri[i] = 1000;
 
                         await PublishAsync(new MqttApplicationMessage()
                         {
-                            Topic = $"test{i + 1}",
+                            Topic = $"test",
                             Retain = true,
                             Payload = new
                             {
                                 Ten = $"test{i + 1}",
-                                ThoiGianDocGiuLieu = DateTime.Now,
+                                ThoiGianDocGiuLieu = DateTime.UtcNow,
                                 GiaTri = GiaTri[i],
                                 Quality = GetQuality(rand.Next(1, 11))
                             }.GetBytePayload(),
@@ -129,8 +128,9 @@ namespace MqttWebSocket.Mqtt
             }
         }
 
-        private static string GetQuality(int num) =>
-            num switch
+        private static string GetQuality(int num)
+        {
+            return num switch
             {
                 1 => "Low",
                 2 => "Low",
@@ -140,6 +140,7 @@ namespace MqttWebSocket.Mqtt
                 6 => "Medium",
                 _ => "Good"
             };
+        }
 
 
         private void ClientDisconnectedHandler(MqttServerClientDisconnectedEventArgs d)
@@ -150,11 +151,30 @@ namespace MqttWebSocket.Mqtt
 
         private void ApplicationMessageInterceptor(MqttApplicationMessageInterceptorContext context)
         {
-            var oldData = context.ApplicationMessage.Payload;
-            string text = Encoding.UTF8.GetString(oldData);
+            if (context.ApplicationMessage.Topic == "test")
+            {
+                var oldData = context.ApplicationMessage.Payload;
+                var dyn = JsonConvert.DeserializeObject<dynamic>(Encoding.UTF8.GetString(oldData));
+                if (dyn != null)
+                {
+                    PublishAsync(ChangTopicMessage(context.ApplicationMessage, dyn["Ten"].Value));
+                }
 
-            Console.WriteLine($"{context.ApplicationMessage.Topic}: {text}");
+            }
             //context.ApplicationMessage.Topic = "text10";
+        }
+
+        private MqttApplicationMessage ChangTopicMessage(MqttApplicationMessage message, string newTopic)
+        {
+            if (string.IsNullOrEmpty(newTopic))
+                return message;
+            return new MqttApplicationMessage()
+            {
+                Topic = newTopic,
+                Payload = message.Payload,
+                Retain = message.Retain,
+                QualityOfServiceLevel = MqttQualityOfServiceLevel.AtMostOnce
+            };
         }
 
         private void SubscriptionInterceptor(MqttSubscriptionInterceptorContext s)
