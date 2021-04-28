@@ -110,16 +110,14 @@ namespace MqttWebSocket.Mqtt
 
                         await PublishAsync(new MqttApplicationMessage()
                         {
-                            Topic = $"test",
-                            Retain = true,
+                            Topic = "test",
                             Payload = new
                             {
                                 Ten = $"test{i + 1}",
                                 ThoiGianDocGiuLieu = DateTime.UtcNow,
                                 GiaTri = GiaTri[i],
                                 Quality = GetQuality(rand.Next(1, 11))
-                            }.GetBytePayload(),
-                            QualityOfServiceLevel = MqttQualityOfServiceLevel.AtMostOnce
+                            }.GetBytePayload()
                         });
                     }
                 }
@@ -172,7 +170,7 @@ namespace MqttWebSocket.Mqtt
             {
                 Topic = newTopic,
                 Payload = message.Payload,
-                Retain = message.Retain,
+                Retain = true,
                 QualityOfServiceLevel = MqttQualityOfServiceLevel.AtMostOnce
             };
         }
