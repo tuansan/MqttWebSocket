@@ -14,7 +14,6 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 
 namespace MqttWebSocket.Mqtt
@@ -172,7 +171,7 @@ namespace MqttWebSocket.Mqtt
             }
         }
 
-        internal MqttApplicationMessage ChangTopicMessage(MqttApplicationMessage message, string newTopic)
+        private MqttApplicationMessage ChangTopicMessage(MqttApplicationMessage message, string newTopic)
         {
             if (string.IsNullOrEmpty(newTopic))
                 return message;
