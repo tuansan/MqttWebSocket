@@ -7,8 +7,6 @@ namespace MqttWebSocket.Mqtt
 {
     public interface IMqttService
     {
-        Task StartAsync();
-
         Task RunWebSocketConnectionAsync(HttpContext context);
 
         Task<MqttClientPublishResult> PublishAsync(MqttApplicationMessage applicationMessage);

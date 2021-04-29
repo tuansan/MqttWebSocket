@@ -29,8 +29,6 @@ namespace MqttWebSocket.Configuration
             MqttSettings mqttSettings,
             IMqttService mqttService)
         {
-            mqttService.StartAsync();
-
             if (mqttSettings.WebSocketEndPoint?.Enabled != true || string.IsNullOrEmpty(mqttSettings.WebSocketEndPoint.Path))
                 return;
 

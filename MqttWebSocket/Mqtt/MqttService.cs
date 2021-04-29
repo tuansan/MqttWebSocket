@@ -14,24 +14,24 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 
 namespace MqttWebSocket.Mqtt
 {
     public class MqttService : IMqttService
     {
-        private readonly MqttSettings _mqttSettings;
         private IMqttServer MqttServer { get; }
         private MqttWebSocketServerAdapter Adapter { get; }
         private IList<MemberModel> List { get; }
         private int Count;
-        private float[] GiaTri;
+        private readonly float[] GiaTri;
+        private readonly Random rand = new();
+
+        private const string _topicNoti = "Notifications";
 
         public MqttService(MqttSettings mqttSettings)
         {
-            _mqttSettings = mqttSettings;
-
             var mqttFactory = new MqttFactory();
 
             Adapter = new MqttWebSocketServerAdapter(mqttFactory.DefaultLogger);
@@ -46,37 +46,29 @@ namespace MqttWebSocket.Mqtt
 
             MqttServer = mqttFactory.CreateMqttServer(adapters);
 
-            List = new List<MemberModel>();
-            GiaTri = new float[8];
-        }
+            MqttServer.ClientDisconnectedHandler = new MqttServerClientDisconnectedHandlerDelegate(ClientDisconnectedHandler);
 
-        public Task StartAsync()
-        {
-            var optionsBuilder = new MqttServerOptionsBuilder()
+            MqttServer.StartAsync(new MqttServerOptionsBuilder()
                 .WithConnectionValidator(ConnectionValidator)
                 .WithApplicationMessageInterceptor(ApplicationMessageInterceptor)
                 .WithSubscriptionInterceptor(SubscriptionInterceptor)
-                .WithConnectionBacklog(_mqttSettings.ConnectionBacklog)
-                .WithDefaultEndpointPort(_mqttSettings.TcpEndPoint.Port)
-                .WithMaxPendingMessagesPerClient(_mqttSettings.MaxPendingMessagesPerClient)
-                .Build();
+                .WithConnectionBacklog(mqttSettings.ConnectionBacklog)
+                .WithDefaultEndpointPort(mqttSettings.TcpEndPoint.Port)
+                .WithMaxPendingMessagesPerClient(mqttSettings.MaxPendingMessagesPerClient)
+                .Build());
 
-            MqttServer.ClientDisconnectedHandler = new MqttServerClientDisconnectedHandlerDelegate(ClientDisconnectedHandler);
-
-            MqttServer.StartAsync(optionsBuilder);
+            List = new List<MemberModel>();
+            GiaTri = new float[8];
 
             _ = AutoPublishAsync();
-
-            return Task.CompletedTask;
         }
-
+      
         private void ConnectionValidator(MqttConnectionValidatorContext c)
         {
             if (c.Username != "admin" || c.Password != "123456")
                 c.ReasonCode = MqttConnectReasonCode.NotAuthorized;
             else
             {
-                Console.WriteLine($"{c.ClientId} connection validator for c.Endpoint: {c.Endpoint}");
                 Console.WriteLine($"{++Count} online");
 
                 Guid g = Guid.NewGuid();
@@ -92,7 +84,6 @@ namespace MqttWebSocket.Mqtt
 
         private async Task AutoPublishAsync()
         {
-            var rand = new Random();
 
             while (true)
             {
@@ -126,6 +117,17 @@ namespace MqttWebSocket.Mqtt
             }
         }
 
+        private async Task PublishNoti(NotiModel model)
+        {
+            await PublishAsync(new MqttApplicationMessage()
+            {
+                Topic = _topicNoti,
+                Payload = model.GetBytePayload(),
+                Retain = true,
+                QualityOfServiceLevel = MqttQualityOfServiceLevel.ExactlyOnce
+            });
+        }
+
         private static string GetQuality(int num)
         {
             return num switch
@@ -140,7 +142,6 @@ namespace MqttWebSocket.Mqtt
             };
         }
 
-
         private void ClientDisconnectedHandler(MqttServerClientDisconnectedEventArgs d)
         {
             List.Remove(List.FirstOrDefault(s => s.Id == d.ClientId));
@@ -149,17 +150,29 @@ namespace MqttWebSocket.Mqtt
 
         private void ApplicationMessageInterceptor(MqttApplicationMessageInterceptorContext context)
         {
-            if (context.ApplicationMessage.Topic == "test")
+            switch (context.ApplicationMessage.Topic)
             {
-                var dyn = JsonConvert.DeserializeObject<dynamic>(Encoding.UTF8.GetString(context.ApplicationMessage.Payload));
-                // ReSharper disable once PossibleNullReferenceException
-                string topic = dyn["Ten"]?.Value;
-                if (!string.IsNullOrEmpty(topic))
-                    PublishAsync(ChangTopicMessage(context.ApplicationMessage, topic));
+                case "test":
+                    {
+                        var dyn = JsonConvert.DeserializeObject<dynamic>(Encoding.UTF8.GetString(context.ApplicationMessage.Payload));
+                        // ReSharper disable once PossibleNullReferenceException
+                        string topic = dyn["Ten"]?.Value;
+                        if (!string.IsNullOrEmpty(topic))
+                            PublishAsync(ChangTopicMessage(context.ApplicationMessage, topic));
+                        break;
+                    }
+                case "testNoti":
+                    _ = PublishNoti(new NotiModel()
+                    {
+                        connected = rand.Next(0, 10),
+                        disconnected = 0
+                    });
+                    context.AcceptPublish = false;
+                    break;
             }
         }
 
-        private MqttApplicationMessage ChangTopicMessage(MqttApplicationMessage message, string newTopic)
+        internal MqttApplicationMessage ChangTopicMessage(MqttApplicationMessage message, string newTopic)
         {
             if (string.IsNullOrEmpty(newTopic))
                 return message;
