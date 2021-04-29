@@ -6,28 +6,32 @@ using MQTTnet.Client.Publishing;
 using MQTTnet.Implementations;
 using MQTTnet.Protocol;
 using MQTTnet.Server;
-using MqttWebSocket.Configuration;
-using MqttWebSocket.Models;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Newtonsoft.Json;
+using MqttWebSocket.Configuration;
+using MqttWebSocket.Models;
 
 namespace MqttWebSocket.Mqtt
 {
     public class MqttService : IMqttService
     {
+        #region Fields
+
         private IMqttServer MqttServer { get; }
         private MqttWebSocketServerAdapter Adapter { get; }
-        private IList<MemberModel> List { get; }
         private int Count;
         private readonly float[] GiaTri;
         private readonly Random rand = new();
 
         private const string _topicNoti = "Notifications";
+
+        #endregion Fields
+
+        #region Ctor
 
         public MqttService(MqttSettings mqttSettings)
         {
@@ -56,34 +60,19 @@ namespace MqttWebSocket.Mqtt
                 .WithMaxPendingMessagesPerClient(mqttSettings.MaxPendingMessagesPerClient)
                 .Build());
 
-            List = new List<MemberModel>();
-            GiaTri = new float[8];
-
             _ = AutoPublishAsync();
-        }
-      
-        private void ConnectionValidator(MqttConnectionValidatorContext c)
-        {
-            if (c.Username != "admin" || c.Password != "123456")
-                c.ReasonCode = MqttConnectReasonCode.NotAuthorized;
-            else
-            {
-                Console.WriteLine($"{++Count} online");
 
-                Guid g = Guid.NewGuid();
-
-                List.Add(new MemberModel
-                {
-                    Id = c.ClientId,
-                    Topic = g.ToString(),
-                    Guid = g
-                });
-            }
+            GiaTri = new float[8];
         }
+
+        #endregion Ctor
+
+        #region Utilities
+
+        #region Common
 
         private async Task AutoPublishAsync()
         {
-
             while (true)
             {
                 for (int i = 0; i < 8; i++)
@@ -141,9 +130,36 @@ namespace MqttWebSocket.Mqtt
             };
         }
 
+        private MqttApplicationMessage ChangTopicMessage(MqttApplicationMessage message, string newTopic)
+        {
+            if (string.IsNullOrEmpty(newTopic))
+                return message;
+            return new MqttApplicationMessage()
+            {
+                Topic = newTopic,
+                Payload = message.Payload,
+                Retain = true,
+                QualityOfServiceLevel = MqttQualityOfServiceLevel.AtMostOnce
+            };
+        }
+
+        #endregion Common
+
+        #region Conn
+
+        private void ConnectionValidator(MqttConnectionValidatorContext c)
+        {
+            if (c.Username != "admin" || c.Password != "123456")
+                c.ReasonCode = MqttConnectReasonCode.NotAuthorized;
+            else
+            {
+                Console.WriteLine($"{c.ClientId} connection validator for c.Endpoint: {c.Endpoint}");
+                Console.WriteLine($"{++Count} online");
+            }
+        }
+
         private void ClientDisconnectedHandler(MqttServerClientDisconnectedEventArgs d)
         {
-            List.Remove(List.FirstOrDefault(s => s.Id == d.ClientId));
             Console.WriteLine($"{--Count} online");
         }
 
@@ -171,28 +187,17 @@ namespace MqttWebSocket.Mqtt
             }
         }
 
-        private MqttApplicationMessage ChangTopicMessage(MqttApplicationMessage message, string newTopic)
-        {
-            if (string.IsNullOrEmpty(newTopic))
-                return message;
-            return new MqttApplicationMessage()
-            {
-                Topic = newTopic,
-                Payload = message.Payload,
-                Retain = true,
-                QualityOfServiceLevel = MqttQualityOfServiceLevel.AtMostOnce
-            };
-        }
-
         private void SubscriptionInterceptor(MqttSubscriptionInterceptorContext s)
         {
             if (s.TopicFilter.Topic.Equals("#"))
                 s.AcceptSubscription = false;
-
-            if (Guid.TryParse(s.TopicFilter.Topic, out Guid g))
-                if (g != List.FirstOrDefault(q => q.Id == s.ClientId)?.Guid)
-                    s.AcceptSubscription = false;
         }
+
+        #endregion Conn
+
+        #endregion Utilities
+
+        #region Methods
 
         public async Task RunWebSocketConnectionAsync(HttpContext context)
         {
@@ -213,5 +218,7 @@ namespace MqttWebSocket.Mqtt
 
             return MqttServer.PublishAsync(applicationMessage);
         }
+
+        #endregion Methods
     }
 }
